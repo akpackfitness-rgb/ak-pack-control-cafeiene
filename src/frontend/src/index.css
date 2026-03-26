@@ -1,0 +1,236 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Ultra-dark warm theme with amber glow accents */
+    --background: 0.07 0.012 265;
+    --foreground: 0.95 0.008 260;
+    --card: 0.1 0.015 265;
+    --card-foreground: 0.95 0.008 260;
+    --popover: 0.09 0.015 265;
+    --popover-foreground: 0.95 0.008 260;
+    --primary: 0.58 0.22 232;
+    --primary-foreground: 0.98 0.005 252;
+    --secondary: 0.14 0.018 265;
+    --secondary-foreground: 0.75 0.015 260;
+    --muted: 0.13 0.015 265;
+    --muted-foreground: 0.52 0.018 260;
+    --accent: 0.72 0.18 55;
+    --accent-foreground: 0.08 0.01 265;
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0.005 25;
+    --border: 0.18 0.018 265;
+    --input: 0.14 0.018 265;
+    --ring: 0.58 0.22 232;
+    --radius: 0.875rem;
+    /* Chart colors */
+    --chart-1: 0.58 0.22 232;
+    --chart-2: 0.72 0.18 55;
+    --chart-3: 0.68 0.18 158;
+    --chart-4: 0.65 0.22 320;
+    --chart-5: 0.6 0.2 25;
+    /* Sidebar – near black */
+    --sidebar: 0.05 0.01 265;
+    --sidebar-foreground: 0.9 0.008 260;
+    --sidebar-primary: 0.58 0.22 232;
+    --sidebar-primary-foreground: 0.98 0.005 252;
+    --sidebar-accent: 0.12 0.015 265;
+    --sidebar-accent-foreground: 0.8 0.012 260;
+    --sidebar-border: 0.12 0.012 265;
+    --sidebar-ring: 0.58 0.22 232;
+    /* Status colors */
+    --status-active: 0.68 0.2 145;
+    --status-expiring: 0.78 0.19 85;
+    --status-expired: 0.58 0.22 25;
+  }
+
+  /* Light mode kept but not primary */
+  .light {
+    --background: 0.95 0.012 240;
+    --foreground: 0.18 0.03 252;
+    --card: 0.98 0.008 240;
+    --card-foreground: 0.18 0.03 252;
+    --popover: 0.98 0.008 240;
+    --popover-foreground: 0.18 0.03 252;
+    --primary: 0.52 0.22 232;
+    --primary-foreground: 0.98 0.005 252;
+    --secondary: 0.9 0.018 240;
+    --secondary-foreground: 0.25 0.03 252;
+    --muted: 0.9 0.015 240;
+    --muted-foreground: 0.48 0.025 252;
+    --accent: 0.62 0.18 55;
+    --accent-foreground: 0.08 0.01 265;
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0.005 25;
+    --border: 0.84 0.02 240;
+    --input: 0.88 0.018 240;
+    --ring: 0.52 0.22 232;
+    --radius: 0.875rem;
+    --chart-1: 0.52 0.22 232;
+    --chart-2: 0.65 0.18 55;
+    --chart-3: 0.58 0.18 158;
+    --chart-4: 0.55 0.22 320;
+    --chart-5: 0.5 0.2 25;
+    --sidebar: 0.9 0.018 240;
+    --sidebar-foreground: 0.18 0.03 252;
+    --sidebar-primary: 0.52 0.22 232;
+    --sidebar-primary-foreground: 0.98 0.005 252;
+    --sidebar-accent: 0.85 0.022 240;
+    --sidebar-accent-foreground: 0.25 0.03 252;
+    --sidebar-border: 0.82 0.02 240;
+    --sidebar-ring: 0.52 0.22 232;
+    --status-active: 0.58 0.18 145;
+    --status-expiring: 0.65 0.19 85;
+    --status-expired: 0.52 0.22 25;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Warm amber radial glow overlay */
+  .warm-glow {
+    background: radial-gradient(
+        ellipse at 70% 40%,
+        rgba(251, 146, 60, 0.13) 0%,
+        rgba(168, 85, 247, 0.07) 40%,
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse at 20% 80%,
+        rgba(59, 130, 246, 0.07) 0%,
+        transparent 50%
+      );
+  }
+
+  /* Glass card */
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px oklch(var(--primary) / 0.25), 0 8px 32px
+      rgba(0, 0, 0, 0.5);
+  }
+
+  .glow-card {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(251, 146, 60, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Stat card gradients */
+  .stat-purple {
+    background: linear-gradient(
+      135deg,
+      rgba(139, 92, 246, 0.35) 0%,
+      rgba(109, 40, 217, 0.2) 100%
+    );
+    border: 1px solid rgba(139, 92, 246, 0.25);
+  }
+  .stat-blue {
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.35) 0%,
+      rgba(29, 78, 216, 0.2) 100%
+    );
+    border: 1px solid rgba(59, 130, 246, 0.25);
+  }
+  .stat-teal {
+    background: linear-gradient(
+      135deg,
+      rgba(20, 184, 166, 0.35) 0%,
+      rgba(15, 118, 110, 0.2) 100%
+    );
+    border: 1px solid rgba(20, 184, 166, 0.25);
+  }
+  .stat-amber {
+    background: linear-gradient(
+      135deg,
+      rgba(251, 146, 60, 0.35) 0%,
+      rgba(217, 119, 6, 0.2) 100%
+    );
+    border: 1px solid rgba(251, 146, 60, 0.25);
+  }
+  .stat-green {
+    background: linear-gradient(
+      135deg,
+      rgba(34, 197, 94, 0.35) 0%,
+      rgba(21, 128, 61, 0.2) 100%
+    );
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+  .stat-red {
+    background: linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.35) 0%,
+      rgba(185, 28, 28, 0.2) 100%
+    );
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+
+  .status-active {
+    color: oklch(var(--status-active));
+    background: oklch(var(--status-active) / 0.12);
+    border-color: oklch(var(--status-active) / 0.3);
+  }
+
+  .status-expiring {
+    color: oklch(var(--status-expiring));
+    background: oklch(var(--status-expiring) / 0.12);
+    border-color: oklch(var(--status-expiring) / 0.3);
+  }
+
+  .status-expired {
+    color: oklch(var(--status-expired));
+    background: oklch(var(--status-expired) / 0.12);
+    border-color: oklch(var(--status-expired) / 0.3);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(var(--border));
+    border-radius: 10px;
+  }
+}
