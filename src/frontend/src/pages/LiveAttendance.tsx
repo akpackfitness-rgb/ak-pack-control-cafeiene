@@ -31,7 +31,8 @@ const glassCard = {
 
 export function LiveAttendancePage() {
   const today = getTodayISTString(); // YYYY-MM-DD
-  const [filterDate, setFilterDate] = useState(today);
+  // Default to empty string so ALL records show by default
+  const [filterDate, setFilterDate] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(
     null,
   );
@@ -47,6 +48,7 @@ export function LiveAttendancePage() {
   const {
     data: attendance = [],
     isLoading,
+    isFetching,
     isError,
     error,
     dataUpdatedAt,
@@ -56,11 +58,37 @@ export function LiveAttendancePage() {
   const { data: members = [], isError: membersError } = useMembers();
 
   // Build a membership ID → Package Validity lookup map
+  // Normalize IDs numerically to handle leading zeros / whitespace mismatches
   const memberValidityMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of members) {
-      if (m["Membership ID"]) {
-        map[m["Membership ID"]] = m["Package Validity"] || "";
+      const id = (m["Membership ID"] || "").trim();
+      if (id) {
+        map[id] = m["Package Validity"] || "";
+        // Also map by plain integer string so "01" matches "1" etc.
+        const numId = String(Number.parseInt(id, 10));
+        if (!Number.isNaN(Number.parseInt(id, 10))) {
+          map[numId] = m["Package Validity"] || "";
+        }
+      }
+    }
+    return map;
+  }, [members]);
+
+  // Also build a member details map for the modal
+  const memberDetailsMap = useMemo(() => {
+    const map: Record<string, { packageDetails: string; contactNo: string }> =
+      {};
+    for (const m of members) {
+      const id = (m["Membership ID"] || "").trim();
+      if (id) {
+        const info = {
+          packageDetails: m["Package Details"] || "",
+          contactNo: m["Contact No"] || "",
+        };
+        map[id] = info;
+        const numId = String(Number.parseInt(id, 10));
+        if (!Number.isNaN(Number.parseInt(id, 10))) map[numId] = info;
       }
     }
     return map;
@@ -68,21 +96,32 @@ export function LiveAttendancePage() {
 
   const filtered = useMemo(() => {
     if (!filterDate) return attendance;
-    // Sheets stores Date as dd/MM/yyyy -- convert to YYYY-MM-DD before comparing
-    return attendance.filter((r) => sheetDateToISO(r.Date) === filterDate);
+    // normalizeAttendance already converts Date to ISO (YYYY-MM-DD).
+    // sheetDateToISO handles any raw dd/MM/yyyy or dd-MM-yyyy that might slip through.
+    return attendance.filter((r) => {
+      const iso = sheetDateToISO(r.Date);
+      return iso === filterDate || r.Date === filterDate;
+    });
   }, [attendance, filterDate]);
 
+  // If today filter is active, there are records loaded, but none match today,
+  // automatically show all records instead of a blank screen.
+  // Removed !isLoading guard so the fallback also triggers during background refetch states.
+  const showingAllFallback =
+    filterDate === today && filtered.length === 0 && attendance.length > 0;
+
+  const displayList = showingAllFallback ? attendance : filtered;
+
   const sorted = useMemo(() => {
-    return [...filtered]
+    return [...displayList]
       .sort((a, b) => {
-        // Use timeToMinutes for correct AM/PM comparison instead of localeCompare
         return (
           timeToMinutes(b["Check In Time"] || "") -
           timeToMinutes(a["Check In Time"] || "")
         );
       })
       .slice(0, 25);
-  }, [filtered]);
+  }, [displayList]);
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString("en-IN", {
@@ -95,7 +134,40 @@ export function LiveAttendancePage() {
     : "—";
 
   const hasData = attendance.length > 0;
-  const noMatchForDate = hasData && filtered.length === 0 && filterDate !== "";
+  const noMatchForDate =
+    hasData &&
+    filtered.length === 0 &&
+    filterDate !== "" &&
+    !showingAllFallback;
+
+  // Show skeletons only on initial load with no cached data
+  const showSkeletons = isLoading && !hasData;
+  // Show subtle background-fetch indicator when we already have data
+  const showFetchingIndicator = isFetching && hasData;
+
+  // Resolve validity + status for the selected modal record
+  const selectedValidity = selectedRecord
+    ? (() => {
+        const rawId = (selectedRecord["Membership ID"] || "").trim();
+        const numId = String(Number.parseInt(rawId, 10));
+        return (
+          memberValidityMap[rawId] ||
+          memberValidityMap[numId] ||
+          selectedRecord["Package Validity"] ||
+          ""
+        );
+      })()
+    : "";
+
+  const selectedStatus = computeMembershipStatus(selectedValidity);
+
+  const selectedDetails = selectedRecord
+    ? (() => {
+        const rawId = (selectedRecord["Membership ID"] || "").trim();
+        const numId = String(Number.parseInt(rawId, 10));
+        return memberDetailsMap[rawId] || memberDetailsMap[numId] || null;
+      })()
+    : null;
 
   return (
     <div className="p-6 space-y-6">
@@ -109,10 +181,13 @@ export function LiveAttendancePage() {
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
               Auto-refreshing every 5s · Last: {lastUpdated}
+              {showFetchingIndicator && (
+                <span className="ml-2 opacity-60">· syncing…</span>
+              )}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <a
             href="#live"
             target="_blank"
@@ -153,6 +228,28 @@ export function LiveAttendancePage() {
             }}
             data-ocid="attendance.input"
           />
+          {/* Quick-jump to today */}
+          {filterDate !== today && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-white/50 hover:text-white text-xs px-2"
+              onClick={() => setFilterDate(today)}
+              data-ocid="attendance.secondary_button"
+            >
+              Today
+            </Button>
+          )}
+          {filterDate !== "" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-white/40 hover:text-white text-xs px-2"
+              onClick={() => setFilterDate("")}
+            >
+              All
+            </Button>
+          )}
         </div>
       </div>
 
@@ -173,6 +270,27 @@ export function LiveAttendancePage() {
             Make sure your Apps Script has an <code>action=getAttendance</code>{" "}
             handler in <code>doGet</code>.
           </p>
+        </div>
+      )}
+
+      {/* Auto-fallback notice when no records found for today */}
+      {showingAllFallback && (
+        <div
+          className="rounded-xl p-3 text-xs"
+          style={{
+            background: "rgba(251,191,36,0.08)",
+            border: "1px solid rgba(251,191,36,0.2)",
+            color: "rgba(251,191,36,0.85)",
+          }}
+        >
+          Showing all records — no entries found for today ({today}).{" "}
+          <button
+            type="button"
+            className="underline"
+            onClick={() => setFilterDate("")}
+          >
+            Clear filter
+          </button>
         </div>
       )}
 
@@ -203,11 +321,13 @@ export function LiveAttendancePage() {
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
           <span className="text-sm font-semibold text-white">
-            {filterDate === today
-              ? "Today's Attendance"
-              : filterDate
-                ? `Attendance for ${formatDateIST(new Date(`${filterDate}T00:00:00`))}`
-                : "All Attendance Records"}
+            {showingAllFallback
+              ? "All Attendance Records (today has no entries)"
+              : filterDate === today
+                ? "Today's Attendance"
+                : filterDate
+                  ? `Attendance for ${formatDateIST(new Date(`${filterDate}T00:00:00`))}`
+                  : "All Attendance Records"}
           </span>
           <Badge
             variant="secondary"
@@ -240,7 +360,7 @@ export function LiveAttendancePage() {
           </div>
         )}
 
-        {isLoading ? (
+        {showSkeletons ? (
           <div className="p-4 space-y-3" data-ocid="attendance.loading_state">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-16 rounded-xl" />
@@ -248,33 +368,54 @@ export function LiveAttendancePage() {
           </div>
         ) : sorted.length === 0 ? (
           <div
-            className="flex flex-col items-center justify-center py-16"
+            className="flex flex-col items-center justify-center py-16 px-6 text-center"
             style={{ color: "rgba(255,255,255,0.3)" }}
             data-ocid="attendance.empty_state"
           >
             <RefreshCw className="h-10 w-10 mb-3 opacity-40" />
-            <p className="text-sm">No attendance records for this date</p>
-            <p className="text-xs mt-1 opacity-60">
-              Try checking-in a member first, then refresh
-            </p>
+            {!isError && attendance.length === 0 ? (
+              <>
+                <p className="text-sm font-semibold">
+                  No attendance records found
+                </p>
+                <p className="text-xs mt-1 opacity-60 max-w-xs">
+                  Check-in a member first, or verify your Apps Script is
+                  returning data for <code>action=getAttendance</code>.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm">No attendance records for this date</p>
+                <p className="text-xs mt-1 opacity-60">
+                  Try checking-in a member first, then refresh
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div
             className="divide-y"
             style={{ borderColor: "rgba(255,255,255,0.05)" }}
           >
-            {sorted.map((record: AttendanceRecord, i: number) => (
-              <AttendanceRow
-                key={`${record["Membership ID"]}-${i}`}
-                record={record}
-                index={i}
-                onSelect={handleSelect}
-                isNewest={i === 0}
-                packageValidity={
-                  memberValidityMap[record["Membership ID"]] || ""
-                }
-              />
-            ))}
+            {sorted.map((record: AttendanceRecord, i: number) => {
+              const rawId = (record["Membership ID"] || "").trim();
+              const numId = String(Number.parseInt(rawId, 10));
+              const packageValidity =
+                memberValidityMap[rawId] ||
+                memberValidityMap[numId] ||
+                record["Package Validity"] ||
+                "";
+              return (
+                <AttendanceRow
+                  key={`${record["Membership ID"]}-${i}`}
+                  record={record}
+                  index={i}
+                  onSelect={handleSelect}
+                  isNewest={i === 0}
+                  packageValidity={packageValidity}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -311,11 +452,29 @@ export function LiveAttendancePage() {
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center"
                     style={{
-                      background: "rgba(59,130,246,0.2)",
-                      border: "1px solid rgba(59,130,246,0.3)",
+                      background:
+                        selectedStatus.status === "expired"
+                          ? "rgba(239,68,68,0.2)"
+                          : selectedStatus.status === "warning"
+                            ? "rgba(234,179,8,0.2)"
+                            : "rgba(59,130,246,0.2)",
+                      border:
+                        selectedStatus.status === "expired"
+                          ? "1px solid rgba(239,68,68,0.3)"
+                          : selectedStatus.status === "warning"
+                            ? "1px solid rgba(234,179,8,0.3)"
+                            : "1px solid rgba(59,130,246,0.3)",
                     }}
                   >
-                    <span className="text-lg font-bold text-blue-400">
+                    <span
+                      className={`text-lg font-bold ${
+                        selectedStatus.status === "expired"
+                          ? "text-red-400"
+                          : selectedStatus.status === "warning"
+                            ? "text-yellow-400"
+                            : "text-blue-400"
+                      }`}
+                    >
                       {(selectedRecord["Client Name"] || "?")
                         .charAt(0)
                         .toUpperCase()}
@@ -331,6 +490,14 @@ export function LiveAttendancePage() {
                     >
                       #{selectedRecord["Membership ID"]}
                     </p>
+                    {selectedDetails?.packageDetails && (
+                      <p
+                        className="text-xs mt-0.5"
+                        style={{ color: "rgba(251,146,60,0.8)" }}
+                      >
+                        {selectedDetails.packageDetails}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <button
@@ -350,6 +517,60 @@ export function LiveAttendancePage() {
                   </span>
                   <StatusBadge status={selectedRecord.Status || "Active"} />
                 </div>
+                {/* Expiry info from member data */}
+                {selectedValidity && (
+                  <div className="flex justify-between">
+                    <span style={{ color: "rgba(255,255,255,0.45)" }}>
+                      Expires
+                    </span>
+                    <span
+                      className={`font-semibold ${
+                        selectedStatus.status === "expired"
+                          ? "text-red-400"
+                          : selectedStatus.status === "warning"
+                            ? "text-yellow-400"
+                            : "text-green-400"
+                      }`}
+                    >
+                      {selectedValidity}
+                    </span>
+                  </div>
+                )}
+                {/* Days left / expired label */}
+                {selectedValidity && (
+                  <div className="flex justify-between">
+                    <span style={{ color: "rgba(255,255,255,0.45)" }}>
+                      Days Left
+                    </span>
+                    <span
+                      className={`font-bold ${
+                        selectedStatus.status === "expired"
+                          ? "text-red-400"
+                          : selectedStatus.status === "warning"
+                            ? "text-yellow-400"
+                            : "text-green-400"
+                      }`}
+                    >
+                      {selectedStatus.status === "expired"
+                        ? "EXPIRED"
+                        : selectedStatus.status === "unknown"
+                          ? "—"
+                          : selectedStatus.daysLeft === 1
+                            ? "1 day left"
+                            : `${selectedStatus.daysLeft} days left`}
+                    </span>
+                  </div>
+                )}
+                {selectedDetails?.contactNo && (
+                  <div className="flex justify-between">
+                    <span style={{ color: "rgba(255,255,255,0.45)" }}>
+                      Contact
+                    </span>
+                    <span className="text-white">
+                      {selectedDetails.contactNo}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span style={{ color: "rgba(255,255,255,0.45)" }}>
                     Check In

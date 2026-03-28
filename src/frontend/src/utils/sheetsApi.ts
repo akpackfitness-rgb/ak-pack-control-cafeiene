@@ -1,6 +1,6 @@
 // Direct Google Apps Script calls -- bypasses the Motoko backend for reliability
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyhG0kDajgsg10-xAczrGYXg0hpskTpk5nZh7_Wli4uk11LwILo5sVbYOVNJVGEV9GgrQ/exec";
+  "https://script.google.com/macros/s/AKfycbzRSv8jYX6Wqu6s0VhzK51Xa6uquLw678ee9CIYqsGCQ5gJNBCSnUM9UXyAwPVHtIbP/exec";
 
 type RowObj = Record<string, string>;
 
@@ -309,8 +309,6 @@ export async function fetchMemberById(membershipId: string) {
   }
 
   // Fallback: fetch all members and do flexible exact-match search.
-  // This handles cases where Apps Script column header has extra spaces,
-  // different casing, or is named "Client ID" instead of "Membership ID".
   const allMembers = await fetchMembers();
   const found = allMembers.find((m) => idMatches(m["Membership ID"]));
   return found ?? null;
